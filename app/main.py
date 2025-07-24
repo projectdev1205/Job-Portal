@@ -13,14 +13,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Root route
-@app.get("/")
-def root():
-    return {"message": "Job Portal Backend is Running"}
-
-# Include jobs routes
-app.include_router(jobs_router)
-
-# Run the server
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="localhost", port=8000)
