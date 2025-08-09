@@ -1,11 +1,25 @@
 from fastapi import FastAPI
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from app.database import engine, Base
+from contextlib import asynccontextmanager
 
 # Import routers
-from app.jobs import routes as job_routes
+from app.jobs import jobs_routes as job_routes
 
-app = FastAPI(title="Job Portal API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: create tables
+    print("📦 Creating tables if they do not exist...")
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tables are ready!")
+
+    yield  # Application is running
+
+    # Shutdown: nothing to clean up now
+    print("🛑 Application shutting down...")
+app = FastAPI(title="Job Portal API", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(

@@ -2,11 +2,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "unr3%40lity")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_NAME = os.getenv("DB_NAME", "jobportaldb")
+DB_PASS = os.getenv("DB_PASS", "Demolition99")
+DB_HOST = os.getenv("DB_HOST", "database-1.c5kk4eoaufhx.us-east-2.rds.amazonaws.com")
+DB_NAME = os.getenv("DB_NAME", "job_portal")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
 
