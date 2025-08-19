@@ -2,8 +2,8 @@ from __future__ import annotations
 from typing import Optional, Literal
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from backend.app.models import User
-from backend.app.utils.security import hash_password, verify_password, create_access_token
+from app.models import User
+from app.utils.security import hash_password, verify_password, create_access_token
 
 
 class AuthService:
@@ -62,7 +62,7 @@ class AuthService:
         if not random_pw_hash:
             # If caller didn't pre-hash, store a clearly unusable password
             # (they can set a real one later via a password-set flow)
-            from backend.app.utils.security import hash_password as _hash
+            from app.utils.security import hash_password as _hash
             random_pw_hash = _hash(email + ":google-only")
 
         user = User(

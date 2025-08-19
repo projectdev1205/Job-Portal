@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from backend.app.config import settings
+from app.config import settings
 
 # Create engine with connection pooling
 engine = create_engine(
@@ -23,6 +23,6 @@ def get_db():
         db.close()
 
 if __name__ == "__main__":
-    from backend.app.models import Base
+    from app.models import Base
     Base.metadata.create_all(bind=engine)
     print("✅ Tables created successfully!")

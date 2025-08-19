@@ -7,17 +7,17 @@ from sqlalchemy.orm import Session
 
 from authlib.integrations.starlette_client import OAuth, OAuthError
 
-from backend.app.database import get_db
-from backend.app.models import User, BusinessProfile
-from backend.app.schemas import (
+from app.database import get_db
+from app.models import User, BusinessProfile
+from app.schemas import (
     RegisterIn, LoginIn, UserOut, Token, 
     BusinessRegisterIn, ApplicantRegisterIn,
     UserOutLegacy
 )
-from backend.app.utils.security import (
+from app.utils.security import (
     hash_password, verify_password, create_access_token
 )
-from backend.app.config import settings
+from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 oauth = OAuth()

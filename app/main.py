@@ -3,14 +3,14 @@ from fastapi.responses import JSONResponse
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from backend.app.database import engine, Base
+from app.database import engine, Base
 from contextlib import asynccontextmanager
-from backend.app.config import settings
+from app.config import settings
 import secrets
 
 # Import routers
-from backend.app.jobs import jobs_routes as job_routes
-from backend.app.auth import auth_routes
+from app.jobs import jobs_routes as job_routes
+from app.auth import auth_routes
 
 
 @asynccontextmanager

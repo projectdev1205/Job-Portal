@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from backend.app.database import get_db
-from backend.app.schemas import JobCreate, JobSummary, JobDetail, ApplicationCreate, ApplicationOut, ApplicationDetail
-from backend.app.jobs.jobs_service import JobService
-from backend.app.auth.auth_deps import get_current_user, require_role
-from backend.app.models import User
+from app.database import get_db
+from app.schemas import JobCreate, JobSummary, JobDetail, ApplicationCreate, ApplicationOut, ApplicationDetail
+from app.jobs.jobs_service import JobService
+from app.auth.auth_deps import get_current_user, require_role
+from app.models import User
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 

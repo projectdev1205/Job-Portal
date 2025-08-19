@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from datetime import datetime
 
-from backend.app.models import Job, Application, User
-from backend.app.schemas import JobCreate, JobDetail, JobSummary, JobLocation, CompanyInfo, ApplicationOut, ApplicationDetail, UserOut
+from app.models import Job, Application, User
+from app.schemas import JobCreate, JobDetail, JobSummary, JobLocation, CompanyInfo, ApplicationOut, ApplicationDetail, UserOut
 
 
 class JobService:
