@@ -18,7 +18,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2   # Change if needed
+          aws-region: us-east-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -31,7 +31,10 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
           echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Generate Dockerrun.aws.json
@@ -40,7 +43,7 @@ jobs:
           {
             "AWSEBDockerrunVersion": 1,
             "Image": {
-              "Name": "${IMAGE}",
+              "Name": "${{ env.IMAGE }}",
               "Update": "true"
             },
             "Ports": [
@@ -66,12 +69,12 @@ jobs:
         run: |
           aws elasticbeanstalk create-application-version \
             --application-name "Job-Portal" \
-            --version-label "${VERSION_LABEL}" \
-            --source-bundle S3Bucket="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}",S3Key="${S3_KEY}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}",S3Key="${{ env.S3_KEY }}" \
             --auto-create-application
 
       - name: Deploy new version to Elastic Beanstalk
         run: |
           aws elasticbeanstalk update-environment \
             --environment-name "Job-Portal-env" \
-            --version-label "${VERSION_LABEL}"
+            --version-label "${{ env.VERSION_LABEL }}"
