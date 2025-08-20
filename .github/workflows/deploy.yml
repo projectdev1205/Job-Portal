@@ -30,12 +30,13 @@ jobs:
           ECR_REPOSITORY: 111311034300.dkr.ecr.us-east-2.amazonaws.com/job-portal-backend
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t $IMAGE_URI .
+          docker tag $IMAGE_URI $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $IMAGE_URI
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-          echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Generate Dockerrun.aws.json
         run: |
@@ -43,7 +44,7 @@ jobs:
           {
             "AWSEBDockerrunVersion": 1,
             "Image": {
-              "Name": "${{ env.IMAGE }}",
+              "Name": "${IMAGE}",
               "Update": "true"
             },
             "Ports": [
@@ -58,7 +59,7 @@ jobs:
         run: |
           S3_BUCKET="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}"
           APP_NAME="Job-Portal"
-          VERSION_LABEL="app-${GITHUB_RUN_NUMBER}"
+          VERSION_LABEL="app-${GITHUB_RUN_NUMBER}-${GITHUB_SHA}"  # ✅ always unique
 
           aws s3 cp Dockerrun.aws.json s3://$S3_BUCKET/$APP_NAME/$VERSION_LABEL-Dockerrun.aws.json
 
@@ -69,12 +70,12 @@ jobs:
         run: |
           aws elasticbeanstalk create-application-version \
             --application-name "Job-Portal" \
-            --version-label "${{ env.VERSION_LABEL }}" \
-            --source-bundle S3Bucket="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}",S3Key="${{ env.S3_KEY }}" \
+            --version-label "${VERSION_LABEL}" \
+            --source-bundle S3Bucket="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}",S3Key="${S3_KEY}" \
             --auto-create-application
 
       - name: Deploy new version to Elastic Beanstalk
         run: |
           aws elasticbeanstalk update-environment \
             --environment-name "Job-Portal-env" \
-            --version-label "${{ env.VERSION_LABEL }}"
+            --version-label "${VERSION_LABEL}"
