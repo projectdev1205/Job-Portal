@@ -59,7 +59,7 @@ jobs:
         run: |
           S3_BUCKET="elasticbeanstalk-us-east-2-${{ secrets.AWS_ACCOUNT_ID }}"
           APP_NAME="Job-Portal"
-          VERSION_LABEL="app-${GITHUB_RUN_NUMBER}-${GITHUB_SHA}"  # ✅ always unique
+          VERSION_LABEL="app-$(date +'%Y%m%d%H%M%S')"
 
           aws s3 cp Dockerrun.aws.json s3://$S3_BUCKET/$APP_NAME/$VERSION_LABEL-Dockerrun.aws.json
 
