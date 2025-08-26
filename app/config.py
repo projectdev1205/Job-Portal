@@ -25,10 +25,14 @@ class Settings(BaseSettings):
     google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 
     frontend_url: Optional[str] = None
-    cors_origins: List[str] = os.getenv(
+    cors_origins: str = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:3000,http://localhost:8080"
-    ).split(",")
+    )
+
+    @property
+    def cors_list(self) -> List[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
 
