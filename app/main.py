@@ -11,6 +11,9 @@ import secrets
 # Import routers
 from app.jobs import jobs_routes as job_routes
 from app.auth import auth_routes
+from app.dashboard import router as dashboard_router
+from app.admin import admin_routes
+from app.admin import dev_routes
 
 
 @asynccontextmanager
@@ -77,11 +80,9 @@ def health_check():
 # Include routers
 app.include_router(auth_routes.router)
 app.include_router(job_routes.router)  # Job routes (includes both legacy and enhanced)
-
-# Root endpoint
-@app.get("/")
-def root():
-    return {"message": "Welcome to Job Portal API"}
+app.include_router(dashboard_router)  # Dashboard routes
+app.include_router(admin_routes.router)  # Admin routes
+app.include_router(dev_routes.router)  # Development routes (only in dev environment)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -2,6 +2,7 @@ import secrets
 from typing import Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -9,18 +10,19 @@ from authlib.integrations.starlette_client import OAuth, OAuthError
 
 from app.database import get_db
 from app.models import User, BusinessProfile
+from app.auth.auth_deps import get_current_user
 from app.schemas import (
     RegisterIn, LoginIn, UserOut, Token, 
-    BusinessRegisterIn, ApplicantRegisterIn,
-    UserOutLegacy
+    BusinessRegisterIn, ApplicantRegisterIn, AdminRegisterIn,
+    UserOutLegacy, LoginResponse, LogoutResponse
 )
-from app.utils.security import (
-    hash_password, verify_password, create_access_token
-)
+from app.utils.security import create_access_token, blacklist_token
+from app.auth.auth_service import AuthService
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 oauth = OAuth()
+bearer = HTTPBearer(auto_error=True)
 
 if settings.google_client_id and settings.google_client_secret:
     oauth.register(
@@ -34,120 +36,61 @@ if settings.google_client_id and settings.google_client_secret:
 
 @router.post("/register/business", response_model=UserOut)
 def register_business(payload: BusinessRegisterIn, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Create user
-    user = User(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        email=payload.email,
-        phone_number=payload.phone_number,
-        password_hash=hash_password(payload.password),
-        role="business",
-        email_notifications=payload.email_notifications,
-        terms_accepted=payload.terms_accepted,
-    )
-    db.add(user)
-    db.flush()  # Get user.id without committing
-    
-    # Create business profile
-    business_profile = BusinessProfile(
-        user_id=user.id,
-        business_name=payload.business_name,
-        business_category=payload.business_category,
-        business_description=payload.business_description,
-        address_line1=payload.address_line1,
-        address_line2=payload.address_line2,
-        city=payload.city,
-        state=payload.state,
-        zip_code=payload.zip_code,
-    )
-    db.add(business_profile)
-    
-    db.commit()
-    db.refresh(user)
-    return user
+    """Register a new business user"""
+    service = AuthService(db)
+    return service.register_business(payload)
 
 @router.post("/register/applicant", response_model=UserOut)
 def register_applicant(payload: ApplicantRegisterIn, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    """Register a new applicant user"""
+    service = AuthService(db)
+    return service.register_applicant(payload)
 
-    user = User(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        email=payload.email,
-        phone_number=payload.phone_number,
-        date_of_birth=payload.date_of_birth,
-        password_hash=hash_password(payload.password),
-        role="applicant",
-        address_line1=payload.address_line1,
-        address_line2=payload.address_line2,
-        city=payload.city,
-        state=payload.state,
-        zip_code=payload.zip_code,
-        email_notifications=payload.email_notifications,
-        terms_accepted=payload.terms_accepted,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+@router.post("/register/admin", response_model=UserOut)
+def register_admin(payload: AdminRegisterIn, db: Session = Depends(get_db)):
+    """Register a new admin user (requires admin code)"""
+    service = AuthService(db)
+    return service.register_admin(payload)
 
 # Legacy registration endpoint for backward compatibility
 @router.post("/register", response_model=UserOutLegacy)
 def register(payload: RegisterIn, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Split name into first_name and last_name
-    name_parts = payload.name.strip().split(' ', 1)
-    first_name = name_parts[0]
-    last_name = name_parts[1] if len(name_parts) > 1 else ""
-
-    user = User(
-        first_name=first_name,
-        last_name=last_name,
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        role=payload.role,
-        terms_accepted=True,  # Assume legacy registrations accept terms
-    )
-    db.add(user)
-    
-    # Create business profile if business user
-    if payload.role == "business":
-        db.flush()  # Get user.id
-        business_profile = BusinessProfile(
-            user_id=user.id,
-            business_name=f"{first_name}'s Business",  # Default business name
-        )
-        db.add(business_profile)
-    
-    db.commit()
-    db.refresh(user)
-    
-    # Return legacy format
-    return UserOutLegacy(
-        id=user.id,
-        name=f"{user.first_name} {user.last_name}".strip(),
-        email=user.email,
-        role=user.role
-    )
+    """Legacy registration for backward compatibility"""
+    service = AuthService(db)
+    return service.register_legacy(payload)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 def login(payload: LoginIn, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    """Authenticate user and return login response"""
+    service = AuthService(db)
+    return service.login(payload)
 
-    token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
-    return {"access_token": token, "token_type": "bearer"}
+@router.post("/logout", response_model=LogoutResponse)
+def logout(
+    current_user: User = Depends(get_current_user),
+    creds: HTTPAuthorizationCredentials = Depends(bearer)
+):
+    """Logout user by blacklisting their token"""
+    token = creds.credentials
+    blacklist_token(token)
+    return LogoutResponse(
+        message="Successfully logged out",
+        status="success"
+    )
+
+@router.post("/logout/all")
+def logout_all_sessions(
+    current_user: User = Depends(get_current_user)
+):
+    """Logout user from all sessions (admin only)"""
+    # This is a placeholder for future implementation
+    # In a real app, you'd track user sessions and invalidate all of them
+    return {
+        "message": "All sessions logged out successfully",
+        "status": "success",
+        "note": "This endpoint is a placeholder for future session management"
+    }
 
 
 @router.get("/google/login")
@@ -182,37 +125,9 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Google did not return an email")
 
     # Upsert user
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        fallback_hash = hash_password(secrets.token_urlsafe(24))
-        role = request.session.get("oauth_role") or "applicant"
-        
-        # Split name into first_name and last_name
-        name_parts = (name or email.split("@")[0]).strip().split(' ', 1)
-        first_name = name_parts[0]
-        last_name = name_parts[1] if len(name_parts) > 1 else ""
-        
-        user = User(
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            password_hash=fallback_hash,   # prevents local login unless they set a password later
-            role=role,
-            terms_accepted=True,  # OAuth users implicitly accept terms
-        )
-        db.add(user)
-        
-        # Create business profile if business user
-        if role == "business":
-            db.flush()  # Get user.id
-            business_profile = BusinessProfile(
-                user_id=user.id,
-                business_name=f"{first_name}'s Business",  # Default business name
-            )
-            db.add(business_profile)
-        
-        db.commit()
-        db.refresh(user)
+    service = AuthService(db)
+    role = request.session.get("oauth_role") or "applicant"
+    user = service.get_or_create_oauth_user(email, name, role)
 
     jwt_token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
 

@@ -60,6 +60,7 @@ class Job(Base):
     # Metadata
     applicants = Column(Integer, default=0)
     posted_date = Column(Date, nullable=True)
+    status = Column(String(20), default="active")  # "active", "archived"
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

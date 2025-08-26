@@ -226,12 +226,41 @@ class ApplicantRegisterIn(BaseModel):
             raise ValueError('Terms and conditions must be accepted')
         return v
 
+# Admin Registration Schema
+class AdminRegisterIn(BaseModel):
+    # Personal info
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number: Optional[str] = None
+    password: str
+    
+    # Admin-specific fields
+    admin_code: str  # Secret code to verify admin registration
+    
+    # Preferences
+    email_notifications: Optional[bool] = True
+    terms_accepted: bool = True
+
+    @validator('terms_accepted')
+    def terms_must_be_accepted(cls, v):
+        if not v:
+            raise ValueError('Terms and conditions must be accepted')
+        return v
+
+    @validator('admin_code')
+    def validate_admin_code(cls, v):
+        # You can change this to any secret code you want
+        if v != "ADMIN_SECRET_2024":
+            raise ValueError('Invalid admin code')
+        return v
+
 # Legacy registration for backward compatibility
 class RegisterIn(BaseModel):
     name: str  # Will be split into first_name, last_name
     email: EmailStr
     password: str
-    role: Literal["business", "applicant"]
+    role: Literal["business", "applicant", "admin"]
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -295,3 +324,44 @@ class ApplicationDetail(BaseModel):
     
     class Config:
         from_attributes = True
+
+# Dashboard schemas
+class DashboardMetrics(BaseModel):
+    active_jobs: int
+    total_applications: int
+    new_applications_this_month: int
+    average_response_rate: float
+
+class DashboardJobSummary(BaseModel):
+    id: int
+    title: str
+    job_type: List[str]
+    business_category: Optional[str]
+    location_city: Optional[str]
+    location_state: Optional[str]
+    location_zip: Optional[str]
+    posted_date: str  # Format: "MM/DD/YYYY"
+    description: str
+    applicants: int
+    status: str  # "active" or "archived"
+    
+    class Config:
+        from_attributes = True
+
+class DashboardResponse(BaseModel):
+    metrics: DashboardMetrics
+    jobs: List[DashboardJobSummary]
+
+class JobStatusUpdate(BaseModel):
+    status: str  # "active" or "archived"
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: int
+    user_role: str
+    user_name: str
+
+class LogoutResponse(BaseModel):
+    message: str
+    status: str

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return f"postgresql://{self.db_user}:{self.db_pass}@{self.db_host}/{self.db_name}"
+        return f"postgresql+psycopg://{self.db_user}:{self.db_pass}@{self.db_host}/{self.db_name}"
 
     jwt_secret: str = "change-me-in-production"
     jwt_expire_minutes: int = 60
@@ -25,8 +25,10 @@ class Settings(BaseSettings):
     google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 
     frontend_url: Optional[str] = None
-    cors_origins: list[str] = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(",")
-
+    cors_origins: str = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:8080"
+    )
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
 

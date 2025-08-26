@@ -22,6 +22,7 @@ class JobService:
         return f"{delta.days} days ago" if delta.days > 0 else "Today"
 
     def create_job(self, payload: JobCreate, user_id: int) -> Job:
+        """Create a new job posting"""
         # Handle both new and legacy field formats
         posted_date = (
             datetime.strptime(payload.posted_date, "%m/%d/%Y").date()
@@ -65,6 +66,7 @@ class JobService:
             location_zip=location_zip,
             applicants=payload.applicants or 0,
             posted_date=posted_date,
+            status="active",  # New jobs are active by default
             description=payload.description,
             key_responsibilities=json.dumps(payload.key_responsibilities),
             requirements_qualifications=json.dumps(payload.requirements_qualifications),
@@ -97,7 +99,8 @@ class JobService:
         work_format: Optional[str] = None,
         compensation_type: Optional[str] = None
     ) -> List[JobSummary]:
-        query = self.db.query(Job)
+        """Get all active jobs with filtering"""
+        query = self.db.query(Job).filter(Job.status == "active")  # Only show active jobs in public listings
         
         # Apply filters
         if search:
@@ -160,8 +163,9 @@ class JobService:
             for job in jobs
         ]
 
-    def get_job_detail(self, job_id: int) -> JobDetail:
-        job = self.db.query(Job).filter(Job.id == job_id).first()
+    def get_job_detail(self, job_id: int) -> Optional[JobDetail]:
+        """Get detailed job information"""
+        job = self.db.query(Job).filter(Job.id == job_id, Job.status == "active").first()
         if not job:
             return None
 
@@ -212,7 +216,8 @@ class JobService:
             job_details=json.loads(job.job_details or "{}"),
         )
 
-    def update_job(self, job_id: int, payload: JobCreate, user_id: int) -> Job | None:
+    def update_job(self, job_id: int, payload: JobCreate, user_id: int) -> Optional[Job]:
+        """Update an existing job"""
         job = self.db.query(Job).filter(
             and_(Job.id == job_id, Job.posted_by == user_id)
         ).first()
@@ -281,6 +286,7 @@ class JobService:
         return job
 
     def delete_job(self, job_id: int, user_id: int) -> bool:
+        """Delete a job"""
         job = self.db.query(Job).filter(
             and_(Job.id == job_id, Job.posted_by == user_id)
         ).first()
@@ -293,6 +299,7 @@ class JobService:
 
     # Application methods
     def apply_to_job(self, job_id: int, user_id: int, cover_letter: Optional[str] = None) -> Optional[Application]:
+        """Apply to a job"""
         # Check if job exists
         job = self.db.query(Job).filter(Job.id == job_id).first()
         if not job:
@@ -322,6 +329,7 @@ class JobService:
         return application
 
     def get_user_applications(self, user_id: int, skip: int = 0, limit: int = 20) -> List[ApplicationOut]:
+        """Get applications for a specific user"""
         applications = (
             self.db.query(Application)
             .join(Job)
@@ -345,6 +353,7 @@ class JobService:
         ]
 
     def get_job_applications(self, job_id: int, business_user_id: int, skip: int = 0, limit: int = 20) -> Optional[List[ApplicationDetail]]:
+        """Get applications for a specific job (business user only)"""
         # Verify that the business user owns this job
         job = self.db.query(Job).filter(
             and_(Job.id == job_id, Job.posted_by == business_user_id)
@@ -398,6 +407,7 @@ class JobService:
         ]
 
     def update_application_status(self, application_id: int, status: str, business_user_id: int) -> bool:
+        """Update application status (business user only)"""
         # Verify that the business user owns the job for this application
         application = (
             self.db.query(Application)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.config import settings
+from app.utils.security import verify_token, is_token_blacklisted
 
 bearer = HTTPBearer(auto_error=True)
 
@@ -13,13 +14,19 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     token = creds.credentials
-    try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        email: str = payload.get("sub")
-        if not email:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-    except JWTError:
+    
+    # Check if token is blacklisted
+    if is_token_blacklisted(token):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+    
+    # Verify token
+    payload = verify_token(token)
+    if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+    
+    email: str = payload.get("sub")
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
