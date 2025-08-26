@@ -1,4 +1,4 @@
-# app/config.py
+from typing import List
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     google_redirect_uri: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 
     frontend_url: Optional[str] = None
-    cors_origins: str = os.getenv(
+    cors_origins: List[str] = os.getenv(
         "CORS_ORIGINS",
         "http://localhost:3000,http://localhost:8080"
-    )
+    ).split(",")
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
 
