@@ -44,12 +44,11 @@ jobs:
           {
             "AWSEBDockerrunVersion": 1,
             "Image": {
-              "Name": "${IMAGE}",
-              "Update": "true"
+              "Name": "${IMAGE}"
             },
             "Ports": [
               {
-                "ContainerPort": "8000"
+                "ContainerPort": 8000
               }
             ]
           }
