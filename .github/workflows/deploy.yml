@@ -42,7 +42,7 @@ jobs:
         run: |
           cat > Dockerrun.aws.json <<EOF
           {
-            "AWSEBDockerrunVersion": 1,
+            "AWSEBDockerrunVersion": "1",
             "Image": {
               "Name": "${IMAGE}"
             },
