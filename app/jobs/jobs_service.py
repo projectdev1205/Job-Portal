@@ -398,7 +398,8 @@ class JobService:
                 ),
                 applicant=UserOut(
                     id=app.applicant.id,
-                    name=app.applicant.name,
+                    first_name=app.applicant.first_name,
+                    last_name=app.applicant.last_name,
                     email=app.applicant.email,
                     role=app.applicant.role
                 )

@@ -136,8 +136,10 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         fragment = f"token={jwt_token}&role={user.role}&email={user.email}"
         return RedirectResponse(url=f"{settings.frontend_url}#{fragment}")
 
+    name_parts = [part for part in [user.first_name, user.last_name] if part]
+    name = " ".join(name_parts) if name_parts else "Unknown User"
     return {
         "access_token": jwt_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "name": f"{user.first_name} {user.last_name}".strip(), "email": user.email, "role": user.role},
+        "user": {"id": user.id, "name": name, "email": user.email, "role": user.role},
     }

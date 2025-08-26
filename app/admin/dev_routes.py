@@ -119,7 +119,7 @@ async def create_admin_dev(
             "user": {
                 "id": admin_user.id,
                 "email": admin_user.email,
-                "name": f"{admin_user.first_name} {admin_user.last_name}",
+                "name": f"{admin_user.first_name or ''} {admin_user.last_name or ''}".strip() or "Unknown User",
                 "role": admin_user.role
             },
             "environment": settings.environment

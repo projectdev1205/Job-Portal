@@ -26,8 +26,8 @@ class AuthService:
 
         # Create user
         user = User(
-            first_name=payload.first_name,
-            last_name=payload.last_name,
+            first_name=None,  # Not required for business registration
+            last_name=None,   # Not required for business registration
             email=payload.email,
             phone_number=payload.phone_number,
             password_hash=hash_password(payload.password),
@@ -138,9 +138,11 @@ class AuthService:
         self.db.refresh(user)
         
         # Return legacy format
+        name_parts = [part for part in [user.first_name, user.last_name] if part]
+        name = " ".join(name_parts) if name_parts else "Unknown User"
         return UserOutLegacy(
             id=user.id,
-            name=f"{user.first_name} {user.last_name}".strip(),
+            name=name,
             email=user.email,
             role=user.role
         )
@@ -152,12 +154,14 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
         token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
+        name_parts = [part for part in [user.first_name, user.last_name] if part]
+        user_name = " ".join(name_parts) if name_parts else "Unknown User"
         return LoginResponse(
             access_token=token, 
             token_type="bearer",
             user_id=user.id,
             user_role=user.role,
-            user_name=f"{user.first_name} {user.last_name}".strip()
+            user_name=user_name
         )
     
     def create_oauth_user(self, email: str, name: str, role: str) -> User:

@@ -73,8 +73,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     # Basic info
-    first_name = Column(String(50), nullable=False)
-    last_name = Column(String(50), nullable=False)
+    first_name = Column(String(50), nullable=True)
+    last_name = Column(String(50), nullable=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     phone_number = Column(String(20), nullable=True)
     password_hash = Column(String(255), nullable=False)

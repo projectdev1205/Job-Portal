@@ -171,8 +171,6 @@ class BusinessProfileOut(BaseModel):
 # Business Registration Schema (matches UI Screen 1)
 class BusinessRegisterIn(BaseModel):
     # Personal info
-    first_name: str
-    last_name: str
     email: EmailStr
     phone_number: Optional[str] = None
     password: str
@@ -268,8 +266,8 @@ class LoginIn(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     email: EmailStr
     phone_number: Optional[str]
     role: str
