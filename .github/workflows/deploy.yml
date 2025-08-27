@@ -22,8 +22,8 @@ jobs:
 
       - name: Print AWS Key ID (for debugging)
         run: |
-          echo "🔑 AWS Access Key ID: ${{ secrets.AWS_ACCESS_KEY_ID }}"
-          echo "🔑 AWS Secret Key ID: ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          echo "🔑 AWS Access Key ID: $AWS_ACCESS_KEY_ID"
+          echo "🔑 AWS Secret Key ID: $AWS_SECRET_ACCESS_KEY"
           echo "🌍 AWS Region: us-east-2"
           echo "✅ AWS credentials configured successfully"
           echo "⚠️  WARNING: CREDENTIALS EXPOSED - ROTATE IMMEDIATELY!"
