@@ -36,6 +36,17 @@ class Settings(BaseSettings):
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
 
+    # AWS S3 Configuration
+    aws_access_key_id: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_region: str = os.getenv("AWS_REGION", "us-east-2")
+    s3_bucket_name: str = os.getenv("S3_BUCKET_NAME", "worklyst-files")
+    s3_folder_prefix: str = os.getenv("S3_FOLDER_PREFIX", "uploads/")
+    
+    # File storage settings
+    use_s3: bool = os.getenv("USE_S3", "false").lower() == "true"
+    max_file_size_mb: int = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

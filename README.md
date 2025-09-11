@@ -71,6 +71,15 @@ A comprehensive FastAPI-based job portal backend with authentication, job manage
    FRONTEND_URL=http://localhost:3000
    ENVIRONMENT=development
    DEBUG=true
+
+   # AWS S3 Configuration (for production file storage)
+   USE_S3=false
+   AWS_ACCESS_KEY_ID=your_aws_access_key_id
+   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+   AWS_REGION=us-east-1
+   S3_BUCKET_NAME=job-portal-files
+   S3_FOLDER_PREFIX=uploads/
+   MAX_FILE_SIZE_MB=5
    ```
 
 4. **Database Setup**
@@ -109,10 +118,9 @@ Once running, visit:
 - `DELETE /jobs/{job_id}` - Delete job (owner only)
 
 ### Applications
-- `POST /jobs/{job_id}/apply` - Apply to job (applicants only)
-- `GET /jobs/applications/my` - Get user's applications
-- `GET /jobs/{job_id}/applications` - Get job applications (job owner only)
-- `PUT /jobs/applications/{application_id}/status` - Update application status (job owner only)
+- `POST /applicant/business/{job_id}/apply` - Apply to job with comprehensive form and resume upload
+- `GET /applicant/business/applications/my` - Get user's applications
+- `GET /applicant/business/files/{file_path}` - Get file URL (S3 presigned URL or local path)
 
 ## 💾 Database Schema
 
@@ -228,6 +236,57 @@ curl "http://localhost:8000/jobs/?search=python&location=san%20francisco&limit=1
 - **SQL Injection Prevention** via SQLAlchemy ORM
 - **Input Validation** with Pydantic
 - **Error Information Sanitization**
+
+## 📁 File Storage
+
+### Local Storage (Development)
+By default, files are stored locally in the `uploads/` directory. This is suitable for development and testing.
+
+### AWS S3 Storage (Production)
+For production deployments, configure S3 storage:
+
+1. **Set up AWS S3 bucket** with appropriate permissions
+2. **Configure environment variables**:
+   ```env
+   USE_S3=true
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_REGION=us-east-1
+   S3_BUCKET_NAME=your-bucket-name
+   S3_FOLDER_PREFIX=uploads/
+   MAX_FILE_SIZE_MB=5
+   ```
+
+3. **S3 Bucket Policy** (example):
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "AllowFileUploads",
+         "Effect": "Allow",
+         "Principal": {
+           "AWS": "arn:aws:iam::YOUR_ACCOUNT:user/YOUR_USER"
+         },
+         "Action": [
+           "s3:PutObject",
+           "s3:GetObject",
+           "s3:DeleteObject"
+         ],
+         "Resource": "arn:aws:s3:::your-bucket-name/uploads/*"
+       }
+     ]
+   }
+   ```
+
+### File Organization
+Files are organized into folders:
+- **Resumes**: `uploads/resumes/` (S3) or `uploads/resumes/` (local)
+
+### File Access
+- **S3 Mode**: Files are accessed via presigned URLs (expire after 1 hour)
+- **Local Mode**: Files are served directly from the uploads directory
+- **API Endpoint**: `GET /applicant/business/files/{file_path}` returns the appropriate URL
 
 ## 🚀 Deployment
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 class Job(Base):
-    __tablename__ = "jobs"
+    __tablename__ = "business"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100), nullable=False)
@@ -60,7 +60,7 @@ class Job(Base):
     # Metadata
     applicants = Column(Integer, default=0)
     posted_date = Column(Date, nullable=True)
-    status = Column(String(20), default="active")  # "active", "archived"
+    status = Column(String(20), default="draft")  # "draft", "active", "archived"
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -136,9 +136,19 @@ class Application(Base):
     applied_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Optional fields for application data
+    # Application form data
     cover_letter = Column(Text, nullable=True)
     resume_filename = Column(String(255), nullable=True)
+    
+    # Additional application information
+    relevant_experience = Column(Text, nullable=True)
+    education = Column(Text, nullable=True)
+    availability = Column(String(255), nullable=True)
+    references = Column(Text, nullable=True)
+    
+    # Consent tracking
+    terms_accepted = Column(Boolean, default=False)
+    contact_permission = Column(Boolean, default=False)
 
     # Relationships
     applicant = relationship("User", back_populates="applications")

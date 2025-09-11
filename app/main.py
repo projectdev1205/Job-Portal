@@ -9,7 +9,8 @@ from app.config import settings
 import secrets
 
 # Import routers
-from app.jobs import jobs_routes as job_routes
+from app.business import business_routes as job_routes  # Business job routes
+from app.applicant import applicant_routes as applicant_jobs_routes
 from app.auth import auth_routes
 from app.dashboard import router as dashboard_router
 from app.admin import admin_routes
@@ -79,7 +80,8 @@ def health_check():
 
 # Include routers
 app.include_router(auth_routes.router)
-app.include_router(job_routes.router)  # Job routes (includes both legacy and enhanced)
+app.include_router(job_routes.business_router)  # Business job routes
+app.include_router(applicant_jobs_routes.router)  # Applicant job routes
 app.include_router(dashboard_router)  # Dashboard routes
 app.include_router(admin_routes.router)  # Admin routes
 app.include_router(dev_routes.router)  # Development routes (only in dev environment)

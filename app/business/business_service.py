@@ -66,7 +66,7 @@ class JobService:
             location_zip=location_zip,
             applicants=payload.applicants or 0,
             posted_date=posted_date,
-            status="active",  # New jobs are active by default
+            status="active" if payload.action == "save_and_publish" else ("preview" if payload.action == "preview" else "draft"),  # Set status based on action
             description=payload.description,
             key_responsibilities=json.dumps(payload.key_responsibilities),
             requirements_qualifications=json.dumps(payload.requirements_qualifications),
@@ -97,10 +97,17 @@ class JobService:
         company: Optional[str] = None,
         business_category: Optional[str] = None,
         work_format: Optional[str] = None,
-        compensation_type: Optional[str] = None
+        compensation_type: Optional[str] = None,
+        status: Optional[str] = None
     ) -> List[JobSummary]:
-        """Get all active jobs with filtering"""
-        query = self.db.query(Job).filter(Job.status == "active")  # Only show active jobs in public listings
+        """Get all business with filtering"""
+        query = self.db.query(Job)
+        
+        # Filter by status - if no status specified, default to active for public listings
+        if status:
+            query = query.filter(Job.status == status)
+        else:
+            query = query.filter(Job.status == "active")  # Default to active business for public listings
         
         # Apply filters
         if search:
@@ -280,6 +287,14 @@ class JobService:
         job.requirements_qualifications = json.dumps(payload.requirements_qualifications)
         job.offerings = json.dumps(payload.offerings or [])
         job.job_details = json.dumps(payload.job_details or {})
+        
+        # Update status based on action
+        if payload.action == "save_and_publish":
+            job.status = "active"
+        elif payload.action == "preview":
+            job.status = "preview"
+        elif payload.action == "save":
+            job.status = "draft"
 
         self.db.commit()
         self.db.refresh(job)

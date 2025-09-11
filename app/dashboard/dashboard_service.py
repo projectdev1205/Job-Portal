@@ -28,13 +28,13 @@ class DashboardService:
     def _get_metrics(self, business_user_id: int) -> DashboardMetrics:
         """Calculate dashboard metrics"""
         
-        # Active jobs count
+        # Active business count
         active_jobs = self.db.query(Job).filter(
             Job.posted_by == business_user_id,
             Job.status == "active"
         ).count()
         
-        # Total applications across all jobs
+        # Total applications across all business
         total_applications = self.db.query(Application).join(Job).filter(
             Job.posted_by == business_user_id
         ).count()

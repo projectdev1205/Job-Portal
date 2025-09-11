@@ -34,7 +34,7 @@ class AdminService:
             
             return {
                 "users": user_count,
-                "jobs": job_count,
+                "business": job_count,
                 "applications": application_count,
                 "business_profiles": business_profile_count
             }

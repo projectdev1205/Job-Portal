@@ -18,10 +18,11 @@ class CompanyInfo(BaseModel):
     description: Optional[str]
 
 
-
-
 # Job Creation Schema (supports all UI fields)
 class JobCreate(BaseModel):
+    # Action field - mandatory
+    action: str  # "save", "save_and_publish", "preview"
+    
     # Basic job details
     title: str
     job_type: Optional[List[str]] = None  # ["part-time", "full-time", etc.]
@@ -64,8 +65,6 @@ class JobCreate(BaseModel):
     posted_date: Optional[str] = None  # Format: "MM/DD/YYYY"
     offerings: Optional[List[str]] = None
     job_details: Optional[Dict] = None
-
-
 
 
 # Job Summary Schema (supports all UI fields)
@@ -292,10 +291,35 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-# Application schemas
-class ApplicationCreate(BaseModel):
+class ApplicationFormCreate(BaseModel):
     job_id: int
+    
+    # Personal Information
+    first_name: str
+    last_name: str
+    email: EmailStr
+    phone_number: str
+    
+    # Address
+    street_address: str
+    city: str
+    state: str
+    zip_code: str
+    
+    resume_filename: Optional[str] = None
+    
+    # Cover Letter
     cover_letter: Optional[str] = None
+    
+    # Additional Information
+    relevant_experience: Optional[str] = None
+    education: Optional[str] = None
+    availability: Optional[str] = None
+    references: Optional[str] = None
+    
+    # Consent
+    terms_accepted: bool = False
+    contact_permission: bool = False
 
 class ApplicationOut(BaseModel):
     id: int

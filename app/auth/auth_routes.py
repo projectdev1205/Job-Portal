@@ -10,7 +10,7 @@ from authlib.integrations.starlette_client import OAuth, OAuthError
 
 from app.database import get_db
 from app.models import User, BusinessProfile
-from app.auth.auth_deps import get_current_user
+from app.auth.auth_deps import get_current_user, require_role
 from app.schemas import (
     RegisterIn, LoginIn, UserOut, Token, 
     BusinessRegisterIn, ApplicantRegisterIn, AdminRegisterIn,
@@ -78,6 +78,14 @@ def logout(
         message="Successfully logged out",
         status="success"
     )
+
+@router.get("/user_details", response_model=UserOut)
+def get_user_details(
+    current_user: User = Depends(get_current_user)
+):
+    """Get current user details using token"""
+    return current_user
+
 
 @router.post("/logout/all")
 def logout_all_sessions(
