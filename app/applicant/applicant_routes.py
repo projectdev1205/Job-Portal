@@ -13,7 +13,7 @@ from app.models import User
 from app.utils.s3_service import s3_service
 from app.config import settings
 
-router = APIRouter(prefix="/applicant/business", tags=["Applicant Jobs"])
+router = APIRouter(prefix="/applicant", tags=["Applicant Jobs"])
 
 
 @router.get("/", response_model=List[JobSummary])
