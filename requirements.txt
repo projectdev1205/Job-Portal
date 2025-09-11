@@ -25,3 +25,6 @@ itsdangerous==2.2.0      # For session signing
 
 # AWS S3 for file storage
 boto3==1.35.0            # AWS SDK for S3
+
+# Form data handling
+python-multipart==0.0.9  # Required for file uploads and form data

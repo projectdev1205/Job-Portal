@@ -1,5 +1,5 @@
-# Jobs package
-from .business_routes import business_router
+# Business package
+from .business_routes import router
 from .business_service import JobService
 
-__all__ = ["business_router", "JobService"]
+__all__ = ["router", "JobService"]
