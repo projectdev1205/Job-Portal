@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List, Dict, Literal
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 
@@ -387,3 +387,17 @@ class LoginResponse(BaseModel):
 class LogoutResponse(BaseModel):
     message: str
     status: str
+
+# Admin Migration Schemas
+class DatabaseStatus(BaseModel):
+    connection_status: str
+    connection_error: Optional[str] = None
+    missing_columns: List[str]
+    needs_migration: bool
+    timestamp: datetime
+
+class MigrationResponse(BaseModel):
+    success: bool
+    message: str
+    missing_columns: List[str]
+    timestamp: datetime

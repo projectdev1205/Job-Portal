@@ -12,7 +12,7 @@ email-validator==2.1.0   # Required by pydantic EmailStr
 # Database
 sqlalchemy==2.0.36       # Updated for Python 3.13 compatibility
 psycopg==3.2.3          # PostgreSQL adapter (pure Python, works better on Windows)
-alembic==1.13.2          # Database migrations
+psycopg2-binary==2.9.9  # Binary PostgreSQL adapter for admin APIs and AWS RDS
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0  # JWT
