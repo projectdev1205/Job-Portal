@@ -16,7 +16,6 @@ from app.applicant.applicant_routes import router as applicant_router
 from app.auth import auth_routes
 from app.dashboard import router as dashboard_router
 from app.admin import admin_routes
-from app.admin import dev_routes
 
 
 @asynccontextmanager
