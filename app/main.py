@@ -123,7 +123,6 @@ app.include_router(business_router)  # Business job routes
 app.include_router(applicant_router)  # Applicant job routes
 app.include_router(dashboard_router)  # Dashboard routes
 app.include_router(admin_routes.router)  # Admin routes
-app.include_router(dev_routes.router)  # Development routes (only in dev environment)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
