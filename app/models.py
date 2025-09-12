@@ -131,7 +131,7 @@ class Application(Base):
     __tablename__ = "applications"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("business.id"), nullable=False)
     status = Column(String(30), default="applied")  # applied, shortlisted, hired, rejected
     applied_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

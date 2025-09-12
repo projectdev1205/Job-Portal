@@ -21,7 +21,7 @@ class CompanyInfo(BaseModel):
 # Job Creation Schema (supports all UI fields)
 class JobCreate(BaseModel):
     # Action field - mandatory
-    action: str  # "save", "save_and_publish", "preview"
+    action: str  # "save", "save_and_publish"
     
     # Basic job details
     title: str

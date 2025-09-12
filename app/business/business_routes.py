@@ -8,7 +8,7 @@ from app.business.business_service import JobService
 from app.auth.auth_deps import require_role
 from app.models import User
 
-router = APIRouter(prefix="/business", tags=["Jobs"])
+router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 
 @router.post("/", response_model=dict)
@@ -17,20 +17,13 @@ def create_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("business"))
 ):
-    """Create a new job posting with specified action (Save, Save & Publish, Preview)"""
+    """Create a new job posting with specified action (Save, Save & Publish)"""
     service = JobService(db)
     
     # Create the job with appropriate status
     job = service.create_job(payload, user_id=current_user.id)
     
-    if payload.action == "preview":
-        return {
-            "message": "Job saved as preview",
-            "job_id": job.id,
-            "status": job.status,
-            "action": "preview"
-        }
-    elif payload.action == "save_and_publish":
+    if payload.action == "save_and_publish":
         return {
             "message": "Job saved and published successfully",
             "job_id": job.id,
@@ -93,7 +86,7 @@ def update_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("business"))
 ):
-    """Update an existing job with specified action (Save, Save & Publish, Preview)"""
+    """Update an existing job with specified action (Save, Save & Publish)"""
     service = JobService(db)
     
     # Update the job with appropriate status
@@ -101,14 +94,7 @@ def update_job(
     if not updated_job:
         raise HTTPException(status_code=404, detail="Job not found or you don't have permission to update it")
     
-    if payload.action == "preview":
-        return {
-            "message": "Job updated and saved as preview",
-            "job_id": updated_job.id,
-            "status": updated_job.status,
-            "action": "preview"
-        }
-    elif payload.action == "save_and_publish":
+    if payload.action == "save_and_publish":
         return {
             "message": "Job updated and published successfully",
             "job_id": updated_job.id,

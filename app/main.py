@@ -6,6 +6,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.database import engine, Base
 from contextlib import asynccontextmanager
 from app.config import settings
+from app.utils.logger import setup_logging, get_logger
+from app.middleware.logging_middleware import LoggingMiddleware
 import secrets
 
 # Import routers
@@ -19,21 +21,28 @@ from app.admin import dev_routes
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Setup logging first
+    setup_logging()
+    logger = get_logger("main")
+    
     # Startup: create tables
-    print("📦 Creating tables if they do not exist...")
+    logger.info("📦 Creating tables if they do not exist...")
     Base.metadata.create_all(bind=engine)
-    print("✅ Tables are ready!")
+    logger.info("✅ Tables are ready!")
 
     yield  # Application is running
 
     # Shutdown: nothing to clean up now
-    print("🛑 Application shutting down...")
+    logger.info("🛑 Application shutting down...")
 app = FastAPI(
     title="Job Portal API", 
     version="1.0.0", 
     lifespan=lifespan,
     debug=settings.debug
 )
+
+# Add logging middleware first
+app.add_middleware(LoggingMiddleware)
 
 # Session middleware for OAuth (must be added before other middleware)
 app.add_middleware(
@@ -53,29 +62,60 @@ app.add_middleware(
 # Global exception handler
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    logger = get_logger("exception_handler")
+    request_id = getattr(request.state, "request_id", "unknown")
+    
+    logger.warning(
+        f"HTTP Exception: {exc.status_code} - {exc.detail}",
+        extra={
+            "request_id": request_id,
+            "status_code": exc.status_code,
+            "path": str(request.url),
+            "method": request.method
+        }
+    )
+    
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": exc.detail,
             "status_code": exc.status_code,
-            "path": str(request.url)
+            "path": str(request.url),
+            "request_id": request_id
         }
     )
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    logger = get_logger("exception_handler")
+    request_id = getattr(request.state, "request_id", "unknown")
+    
+    logger.error(
+        f"Unhandled exception: {str(exc)}",
+        extra={
+            "request_id": request_id,
+            "path": str(request.url),
+            "method": request.method,
+            "exception_type": type(exc).__name__
+        },
+        exc_info=True
+    )
+    
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
             "status_code": 500,
-            "path": str(request.url)
+            "path": str(request.url),
+            "request_id": request_id
         }
     )
 
 # Health check endpoint
 @app.get("/health")
 def health_check():
+    logger = get_logger("health_check")
+    logger.debug("Health check requested")
     return {"status": "ok"}
 
 # Include routers

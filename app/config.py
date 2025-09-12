@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # File storage settings
     use_s3: bool = os.getenv("USE_S3", "false").lower() == "true"
     max_file_size_mb: int = int(os.getenv("MAX_FILE_SIZE_MB", "5"))
+    
+    # Logging settings
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    log_format: str = os.getenv("LOG_FORMAT", "detailed")  # detailed, simple, json
 
     model_config = {
         "env_file": ".env",

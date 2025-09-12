@@ -1,4 +1,5 @@
 import secrets
+import time
 from typing import Optional, Literal
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -12,11 +13,13 @@ from app.schemas import (
 from app.utils.security import (
     hash_password, verify_password, create_access_token
 )
+from app.utils.logger import get_logger, log_business_operation, log_database_operation, log_security_event, log_performance
 
 
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
+        self.logger = get_logger("auth_service")
     
     def register_business(self, payload: BusinessRegisterIn) -> UserOut:
         """Register a new business user"""
@@ -149,20 +152,38 @@ class AuthService:
     
     def login(self, payload: LoginIn) -> LoginResponse:
         """Authenticate user and return login response"""
-        user = self.db.query(User).filter(User.email == payload.email).first()
-        if not user or not verify_password(payload.password, user.password_hash):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+        start_time = time.time()
+        self.logger.info(f"Login attempt for email: {payload.email}")
+        
+        try:
+            user = self.db.query(User).filter(User.email == payload.email).first()
+            if not user or not verify_password(payload.password, user.password_hash):
+                log_security_event("login_failed", email=payload.email, reason="invalid_credentials")
+                self.logger.warning(f"Failed login attempt for email: {payload.email}")
+                raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
-        name_parts = [part for part in [user.first_name, user.last_name] if part]
-        user_name = " ".join(name_parts) if name_parts else "Unknown User"
-        return LoginResponse(
-            access_token=token, 
-            token_type="bearer",
-            user_id=user.id,
-            user_role=user.role,
-            user_name=user_name
-        )
+            token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
+            name_parts = [part for part in [user.first_name, user.last_name] if part]
+            user_name = " ".join(name_parts) if name_parts else "Unknown User"
+            
+            duration_ms = (time.time() - start_time) * 1000
+            log_security_event("login_success", user_id=str(user.id), email=payload.email)
+            log_performance("login", duration_ms)
+            self.logger.info(f"Successful login for user {user.id} ({payload.email})")
+            
+            return LoginResponse(
+                access_token=token, 
+                token_type="bearer",
+                user_id=user.id,
+                user_role=user.role,
+                user_name=user_name
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            self.logger.error(f"Login error for {payload.email}: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Internal server error")
     
     def create_oauth_user(self, email: str, name: str, role: str) -> User:
         """Create a new user from OAuth authentication"""

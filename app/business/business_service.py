@@ -1,4 +1,5 @@
 import json
+import time
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
@@ -6,11 +7,13 @@ from datetime import datetime
 
 from app.models import Job, Application, User
 from app.schemas import JobCreate, JobDetail, JobSummary, JobLocation, CompanyInfo, ApplicationOut, ApplicationDetail, UserOut
+from app.utils.logger import get_logger, log_business_operation, log_database_operation, log_performance
 
 
 class JobService:
     def __init__(self, db: Session):
         self.db = db
+        self.logger = get_logger("business_service")
 
     def _days_ago(self, date_obj):
         if not date_obj:
@@ -23,69 +26,85 @@ class JobService:
 
     def create_job(self, payload: JobCreate, user_id: int) -> Job:
         """Create a new job posting"""
-        # Handle both new and legacy field formats
-        posted_date = (
-            datetime.strptime(payload.posted_date, "%m/%d/%Y").date()
-            if payload.posted_date
-            else datetime.utcnow().date()
-        )
-
-        # Use new fields if available, fall back to legacy fields
-        job_type = payload.job_type if payload.job_type else (payload.type or [])
-        company_name = payload.company.name if payload.company else "Company"
-        company_address = payload.company.address if payload.company else None
-        company_description = payload.company.description if payload.company else None
-        tags = payload.tags or []
+        start_time = time.time()
+        self.logger.info(f"Creating job: {payload.title} for user {user_id}")
         
-        # Location handling
-        location_street = payload.location_street
-        location_city = payload.location_city
-        location_state = payload.location_state
-        location_zip = payload.location_zip
-        
-        if payload.location:
-            location_street = payload.location.street
-            location_city = payload.location.city
-            location_state = payload.location.state
-            location_zip = payload.location.zip
+        try:
+            # Handle both new and legacy field formats
+            posted_date = (
+                datetime.strptime(payload.posted_date, "%m/%d/%Y").date()
+                if payload.posted_date
+                else datetime.utcnow().date()
+            )
 
-        db_job = Job(
-            title=payload.title,
-            posted_by=user_id,
-            company_name=company_name,
-            company_address=company_address,
-            company_description=company_description,
-            job_type=",".join(job_type),
-            business_category=payload.business_category,
-            work_format=payload.work_format,
-            minimum_age_required=payload.minimum_age_required,
-            tags=",".join(tags),
-            location_street=location_street,
-            location_city=location_city,
-            location_state=location_state,
-            location_zip=location_zip,
-            applicants=payload.applicants or 0,
-            posted_date=posted_date,
-            status="active" if payload.action == "save_and_publish" else ("preview" if payload.action == "preview" else "draft"),  # Set status based on action
-            description=payload.description,
-            key_responsibilities=json.dumps(payload.key_responsibilities),
-            requirements_qualifications=json.dumps(payload.requirements_qualifications),
-            compensation_type=payload.compensation_type,
-            compensation_amount=payload.compensation_amount,
-            duration=payload.duration,
-            schedule=payload.schedule,
-            application_deadline=payload.application_deadline,
-            contact_email=payload.contact_email,
-            high_school_students_welcome=payload.high_school_students_welcome,
-            after_school_hours_available=payload.after_school_hours_available,
-            previous_experience_required=payload.previous_experience_required,
-            offerings=json.dumps(payload.offerings or []),
-            job_details=json.dumps(payload.job_details or {}),
-        )
-        self.db.add(db_job)
-        self.db.commit()
-        self.db.refresh(db_job)
-        return db_job
+            # Use new fields if available, fall back to legacy fields
+            job_type = payload.job_type if payload.job_type else (payload.type or [])
+            company_name = payload.company.name if payload.company else "Company"
+            company_address = payload.company.address if payload.company else None
+            company_description = payload.company.description if payload.company else None
+            tags = payload.tags or []
+            
+            # Location handling
+            location_street = payload.location_street
+            location_city = payload.location_city
+            location_state = payload.location_state
+            location_zip = payload.location_zip
+            
+            if payload.location:
+                location_street = payload.location.street
+                location_city = payload.location.city
+                location_state = payload.location.state
+                location_zip = payload.location.zip
+
+            db_job = Job(
+                title=payload.title,
+                posted_by=user_id,
+                company_name=company_name,
+                company_address=company_address,
+                company_description=company_description,
+                job_type=",".join(job_type),
+                business_category=payload.business_category,
+                work_format=payload.work_format,
+                minimum_age_required=payload.minimum_age_required,
+                tags=",".join(tags),
+                location_street=location_street,
+                location_city=location_city,
+                location_state=location_state,
+                location_zip=location_zip,
+                applicants=payload.applicants or 0,
+                posted_date=posted_date,
+                status="active" if payload.action == "save_and_publish" else "draft",
+                description=payload.description,
+                key_responsibilities=json.dumps(payload.key_responsibilities),
+                requirements_qualifications=json.dumps(payload.requirements_qualifications),
+                compensation_type=payload.compensation_type,
+                compensation_amount=payload.compensation_amount,
+                duration=payload.duration,
+                schedule=payload.schedule,
+                application_deadline=payload.application_deadline,
+                contact_email=payload.contact_email,
+                high_school_students_welcome=payload.high_school_students_welcome,
+                after_school_hours_available=payload.after_school_hours_available,
+                previous_experience_required=payload.previous_experience_required,
+                offerings=json.dumps(payload.offerings or []),
+                job_details=json.dumps(payload.job_details or {}),
+            )
+            self.db.add(db_job)
+            self.db.commit()
+            self.db.refresh(db_job)
+            
+            duration_ms = (time.time() - start_time) * 1000
+            log_business_operation("create_job", user_id, job_id=db_job.id, title=payload.title)
+            log_database_operation("INSERT", "business", str(db_job.id))
+            log_performance("create_job", duration_ms)
+            
+            self.logger.info(f"Job created successfully: {db_job.id}")
+            return db_job
+            
+        except Exception as e:
+            self.logger.error(f"Failed to create job: {str(e)}", exc_info=True)
+            raise
+
 
     def get_all_jobs(
         self, 
@@ -101,74 +120,88 @@ class JobService:
         status: Optional[str] = None
     ) -> List[JobSummary]:
         """Get all business with filtering"""
-        query = self.db.query(Job)
+        start_time = time.time()
+        self.logger.info(f"Fetching jobs with filters: skip={skip}, limit={limit}, search={search}")
         
-        # Filter by status - if no status specified, default to active for public listings
-        if status:
-            query = query.filter(Job.status == status)
-        else:
-            query = query.filter(Job.status == "active")  # Default to active business for public listings
+        try:
+            query = self.db.query(Job)
+            
+            # Filter by status - if no status specified, default to active for public listings
+            if status:
+                query = query.filter(Job.status == status)
+            else:
+                query = query.filter(Job.status == "active")  # Default to active business for public listings
+            
+            # Apply filters
+            if search:
+                search_filter = or_(
+                    Job.title.ilike(f"%{search}%"),
+                    Job.description.ilike(f"%{search}%"),
+                    Job.company_name.ilike(f"%{search}%"),
+                    Job.tags.ilike(f"%{search}%")
+                )
+                query = query.filter(search_filter)
+            
+            if job_type:
+                query = query.filter(Job.job_type.ilike(f"%{job_type}%"))
+            
+            if location:
+                location_filter = or_(
+                    Job.location_city.ilike(f"%{location}%"),
+                    Job.location_state.ilike(f"%{location}%")
+                )
+                query = query.filter(location_filter)
+            
+            if company:
+                query = query.filter(Job.company_name.ilike(f"%{company}%"))
+            
+            if business_category:
+                query = query.filter(Job.business_category == business_category)
+            
+            if work_format:
+                query = query.filter(Job.work_format == work_format)
+            
+            if compensation_type:
+                query = query.filter(Job.compensation_type == compensation_type)
+            
+            # Apply pagination and ordering
+            jobs = query.order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
         
-        # Apply filters
-        if search:
-            search_filter = or_(
-                Job.title.ilike(f"%{search}%"),
-                Job.description.ilike(f"%{search}%"),
-                Job.company_name.ilike(f"%{search}%"),
-                Job.tags.ilike(f"%{search}%")
-            )
-            query = query.filter(search_filter)
-        
-        if job_type:
-            query = query.filter(Job.job_type.ilike(f"%{job_type}%"))
-        
-        if location:
-            location_filter = or_(
-                Job.location_city.ilike(f"%{location}%"),
-                Job.location_state.ilike(f"%{location}%")
-            )
-            query = query.filter(location_filter)
-        
-        if company:
-            query = query.filter(Job.company_name.ilike(f"%{company}%"))
-        
-        if business_category:
-            query = query.filter(Job.business_category == business_category)
-        
-        if work_format:
-            query = query.filter(Job.work_format == work_format)
-        
-        if compensation_type:
-            query = query.filter(Job.compensation_type == compensation_type)
-        
-        # Apply pagination and ordering
-        jobs = query.order_by(Job.created_at.desc()).offset(skip).limit(limit).all()
-        
-        return [
-            JobSummary(
-                id=job.id,
-                title=job.title,
-                company=job.company_name or "Company",
-                job_type=job.job_type.split(",") if job.job_type else [],
-                business_category=job.business_category,
-                work_format=job.work_format,
-                location=JobLocation(
-                    street=job.location_street,
-                    city=job.location_city,
-                    state=job.location_state,
-                    zip=job.location_zip,
-                ),
-                compensation_type=job.compensation_type,
-                compensation_amount=job.compensation_amount,
-                applicants=job.applicants or 0,
-                posted=self._days_ago(job.created_at) if job.created_at else "N/A",
-                application_deadline=job.application_deadline.strftime("%Y-%m-%d") if job.application_deadline else None,
-                # Legacy fields for backward compatibility
-                type=job.job_type.split(",") if job.job_type else [],
-                tags=job.tags.split(",") if job.tags else [],
-            )
-            for job in jobs
-        ]
+            result = [
+                JobSummary(
+                    id=job.id,
+                    title=job.title,
+                    company=job.company_name or "Company",
+                    job_type=job.job_type.split(",") if job.job_type else [],
+                    business_category=job.business_category,
+                    work_format=job.work_format,
+                    location=JobLocation(
+                        street=job.location_street,
+                        city=job.location_city,
+                        state=job.location_state,
+                        zip=job.location_zip,
+                    ),
+                    compensation_type=job.compensation_type,
+                    compensation_amount=job.compensation_amount,
+                    applicants=job.applicants or 0,
+                    posted=self._days_ago(job.created_at) if job.created_at else "N/A",
+                    application_deadline=job.application_deadline.strftime("%Y-%m-%d") if job.application_deadline else None,
+                    # Legacy fields for backward compatibility
+                    type=job.job_type.split(",") if job.job_type else [],
+                    tags=job.tags.split(",") if job.tags else [],
+                )
+                for job in jobs
+            ]
+            
+            duration_ms = (time.time() - start_time) * 1000
+            log_performance("get_all_jobs", duration_ms, count=len(result))
+            self.logger.info(f"Retrieved {len(result)} jobs in {duration_ms:.2f}ms")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to fetch jobs: {str(e)}", exc_info=True)
+            raise
 
     def get_job_detail(self, job_id: int) -> Optional[JobDetail]:
         """Get detailed job information"""
@@ -225,80 +258,94 @@ class JobService:
 
     def update_job(self, job_id: int, payload: JobCreate, user_id: int) -> Optional[Job]:
         """Update an existing job"""
-        job = self.db.query(Job).filter(
-            and_(Job.id == job_id, Job.posted_by == user_id)
-        ).first()
-        if not job:
-            return None
+        start_time = time.time()
+        self.logger.info(f"Updating job {job_id}: {payload.title} for user {user_id}")
+        
+        try:
+            job = self.db.query(Job).filter(
+                and_(Job.id == job_id, Job.posted_by == user_id)
+            ).first()
+            if not job:
+                self.logger.warning(f"Job {job_id} not found or user {user_id} doesn't have permission")
+                return None
 
-        posted_date = (
-            datetime.strptime(payload.posted_date, "%m/%d/%Y").date()
-            if payload.posted_date
-            else job.posted_date or datetime.utcnow().date()
-        )
+            posted_date = (
+                datetime.strptime(payload.posted_date, "%m/%d/%Y").date()
+                if payload.posted_date
+                else job.posted_date or datetime.utcnow().date()
+            )
 
-        job.title = payload.title
-        
-        # Handle company info (legacy or new format)
-        if payload.company:
-            job.company_name = payload.company.name
-            job.company_address = payload.company.address
-            job.company_description = payload.company.description
-        
-        # Handle job type (new or legacy format)
-        job_type = payload.job_type if payload.job_type else (payload.type or [])
-        job.job_type = ",".join(job_type)
-        
-        # Handle tags (legacy format)
-        if payload.tags:
-            job.tags = ",".join(payload.tags)
-        
-        # Handle location (new or legacy format)
-        if payload.location:
-            job.location_street = payload.location.street
-            job.location_city = payload.location.city
-            job.location_state = payload.location.state
-            job.location_zip = payload.location.zip
-        else:
-            job.location_street = payload.location_street
-            job.location_city = payload.location_city
-            job.location_state = payload.location_state
-            job.location_zip = payload.location_zip
-        
-        # New fields
-        job.business_category = payload.business_category
-        job.work_format = payload.work_format
-        job.minimum_age_required = payload.minimum_age_required
-        job.compensation_type = payload.compensation_type
-        job.compensation_amount = payload.compensation_amount
-        job.duration = payload.duration
-        job.schedule = payload.schedule
-        job.application_deadline = payload.application_deadline
-        job.contact_email = payload.contact_email
-        job.high_school_students_welcome = payload.high_school_students_welcome
-        job.after_school_hours_available = payload.after_school_hours_available
-        job.previous_experience_required = payload.previous_experience_required
-        
-        # Legacy fields
-        job.applicants = payload.applicants or 0
-        job.posted_date = posted_date
-        job.description = payload.description
-        job.key_responsibilities = json.dumps(payload.key_responsibilities)
-        job.requirements_qualifications = json.dumps(payload.requirements_qualifications)
-        job.offerings = json.dumps(payload.offerings or [])
-        job.job_details = json.dumps(payload.job_details or {})
-        
-        # Update status based on action
-        if payload.action == "save_and_publish":
-            job.status = "active"
-        elif payload.action == "preview":
-            job.status = "preview"
-        elif payload.action == "save":
-            job.status = "draft"
+            job.title = payload.title
+            
+            # Handle company info (legacy or new format)
+            if payload.company:
+                job.company_name = payload.company.name
+                job.company_address = payload.company.address
+                job.company_description = payload.company.description
+            
+            # Handle job type (new or legacy format)
+            job_type = payload.job_type if payload.job_type else (payload.type or [])
+            job.job_type = ",".join(job_type)
+            
+            # Handle tags (legacy format)
+            if payload.tags:
+                job.tags = ",".join(payload.tags)
+            
+            # Handle location (new or legacy format)
+            if payload.location:
+                job.location_street = payload.location.street
+                job.location_city = payload.location.city
+                job.location_state = payload.location.state
+                job.location_zip = payload.location.zip
+            else:
+                job.location_street = payload.location_street
+                job.location_city = payload.location_city
+                job.location_state = payload.location_state
+                job.location_zip = payload.location_zip
+            
+            # New fields
+            job.business_category = payload.business_category
+            job.work_format = payload.work_format
+            job.minimum_age_required = payload.minimum_age_required
+            job.compensation_type = payload.compensation_type
+            job.compensation_amount = payload.compensation_amount
+            job.duration = payload.duration
+            job.schedule = payload.schedule
+            job.application_deadline = payload.application_deadline
+            job.contact_email = payload.contact_email
+            job.high_school_students_welcome = payload.high_school_students_welcome
+            job.after_school_hours_available = payload.after_school_hours_available
+            job.previous_experience_required = payload.previous_experience_required
+            
+            # Legacy fields
+            job.applicants = payload.applicants or 0
+            job.posted_date = posted_date
+            job.description = payload.description
+            job.key_responsibilities = json.dumps(payload.key_responsibilities)
+            job.requirements_qualifications = json.dumps(payload.requirements_qualifications)
+            job.offerings = json.dumps(payload.offerings or [])
+            job.job_details = json.dumps(payload.job_details or {})
+            
+            # Update status based on action
+            if payload.action == "save_and_publish":
+                job.status = "active"
+            else:  # action == "save"
+                job.status = "draft"
 
-        self.db.commit()
-        self.db.refresh(job)
-        return job
+            self.db.commit()
+            self.db.refresh(job)
+            
+            duration_ms = (time.time() - start_time) * 1000
+            log_business_operation("update_job", user_id, job_id=job.id, title=payload.title, action=payload.action)
+            log_database_operation("UPDATE", "business", str(job.id))
+            log_performance("update_job", duration_ms)
+            
+            self.logger.info(f"Job updated successfully: {job.id}")
+            return job
+            
+        except Exception as e:
+            self.logger.error(f"Failed to update job {job_id}: {str(e)}", exc_info=True)
+            raise
 
     def delete_job(self, job_id: int, user_id: int) -> bool:
         """Delete a job"""
