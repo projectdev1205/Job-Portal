@@ -140,9 +140,24 @@ class AuthService:
         self.db.commit()
         self.db.refresh(user)
         
-        # Return legacy format
-        name_parts = [part for part in [user.first_name, user.last_name] if part]
-        name = " ".join(name_parts) if name_parts else "Unknown User"
+        # Return legacy format with proper name logic
+        if user.role == "business":
+            # For business users, use business name from BusinessProfile
+            business_profile = self.db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+            if business_profile and business_profile.business_name:
+                name = business_profile.business_name
+            else:
+                # Fallback to email prefix if no business name
+                name = user.email.split("@")[0].replace(".", " ").title()
+        else:
+            # For other users, use first_name and last_name
+            name_parts = [part for part in [user.first_name, user.last_name] if part]
+            if name_parts:
+                name = " ".join(name_parts)
+            else:
+                # Fallback to email prefix if no name
+                name = user.email.split("@")[0].replace(".", " ").title()
+        
         return UserOutLegacy(
             id=user.id,
             name=name,
@@ -163,8 +178,24 @@ class AuthService:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
             token = create_access_token(sub=user.email, extra={"role": user.role, "uid": user.id})
-            name_parts = [part for part in [user.first_name, user.last_name] if part]
-            user_name = " ".join(name_parts) if name_parts else "Unknown User"
+            
+            # Determine user name based on role
+            if user.role == "business":
+                # For business users, use business name from BusinessProfile
+                business_profile = self.db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+                if business_profile and business_profile.business_name:
+                    user_name = business_profile.business_name
+                else:
+                    # Fallback to email prefix if no business name
+                    user_name = user.email.split("@")[0].replace(".", " ").title()
+            else:
+                # For other users, use first_name and last_name
+                name_parts = [part for part in [user.first_name, user.last_name] if part]
+                if name_parts:
+                    user_name = " ".join(name_parts)
+                else:
+                    # Fallback to email prefix if no name
+                    user_name = user.email.split("@")[0].replace(".", " ").title()
             
             duration_ms = (time.time() - start_time) * 1000
             log_security_event("login_success", user_id=str(user.id), email=payload.email)

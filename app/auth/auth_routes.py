@@ -144,8 +144,24 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         fragment = f"token={jwt_token}&role={user.role}&email={user.email}"
         return RedirectResponse(url=f"{settings.frontend_url}#{fragment}")
 
-    name_parts = [part for part in [user.first_name, user.last_name] if part]
-    name = " ".join(name_parts) if name_parts else "Unknown User"
+    # Determine user name based on role
+    if user.role == "business":
+        # For business users, use business name from BusinessProfile
+        business_profile = db.query(BusinessProfile).filter(BusinessProfile.user_id == user.id).first()
+        if business_profile and business_profile.business_name:
+            name = business_profile.business_name
+        else:
+            # Fallback to email prefix if no business name
+            name = user.email.split("@")[0].replace(".", " ").title()
+    else:
+        # For other users, use first_name and last_name
+        name_parts = [part for part in [user.first_name, user.last_name] if part]
+        if name_parts:
+            name = " ".join(name_parts)
+        else:
+            # Fallback to email prefix if no name
+            name = user.email.split("@")[0].replace(".", " ").title()
+    
     return {
         "access_token": jwt_token,
         "token_type": "bearer",
